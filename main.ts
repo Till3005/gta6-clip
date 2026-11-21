@@ -25,8 +25,16 @@ try {
   fail(`VIDEO.json at ${source} is not valid JSON: ${(err as Error).message}`);
 }
 
-if (typeof parsed.url !== 'string' || !/^https:\/\/(www\.)?youtube\.com\//.test(parsed.url)) {
-  fail(`VIDEO.json must hold a youtube.com url, got: ${JSON.stringify(parsed.url ?? null)}`);
+// The house passes any of the three canonical forms; all carry the same 11-char
+// video id, so extracting it proves the address names one video, not just that
+// the host looks like YouTube.
+const URL_PATTERN =
+  /^https:\/\/(?:(?:www|m)\.)?(?:youtube\.com\/(?:shorts\/|watch\?v=)|youtu\.be\/)([A-Za-z0-9_-]{11})(?:[?&/]|$)/;
+
+if (typeof parsed.url !== 'string' || !URL_PATTERN.test(parsed.url)) {
+  fail(
+    `VIDEO.json must hold a youtube shorts/watch/youtu.be url with a video id, got: ${JSON.stringify(parsed.url ?? null)}`,
+  );
 }
 
 mkdirSync(OUTPUT_DIR, { recursive: true });
