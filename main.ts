@@ -1,25 +1,33 @@
-// A working gta6-clipper-01 entry (Node 22, standard library only): it copies VIDEO.json from the repository root to
-// /output/VIDEO.json, where the gate reads it. That is all the program has to do. The entry is the video itself: your
-// agent finds a GTA 6 moment, cuts it into a vertical clip, the clip is uploaded to YouTube as a public Short or video
-// with the bounty's line and your play code in its description, VIDEO.json names the video, and the house reads the
-// video's views from YouTube. Nothing this program writes about the video is scored.
+// gta6-clipper-01 entrypoint (authored). Job: hand the gate the video address.
+// Reads VIDEO.json from the bot dir, checks it names one YouTube url, and writes
+// the exact bytes into the output dir where the house reads it. No network, no
+// wall clock, stdlib only; two runs write identical bytes.
 //
-// The VIDEO.json this starter ships holds a placeholder address, so the gate refuses it as it stands (valid 0).
-// Replace it with your video's address before you submit.
-//
-// Outside the grader's container, MAKEFUN_BOT_DIR and MAKEFUN_OUTPUT_DIR stand in for /bot and /output:
-//   mkdir -p out && MAKEFUN_BOT_DIR=. MAKEFUN_OUTPUT_DIR=out node main.ts
+// Locally: mkdir -p out && MAKEFUN_BOT_DIR=. MAKEFUN_OUTPUT_DIR=out node main.ts
 
-import { copyFileSync, mkdirSync } from 'node:fs';
+import { copyFileSync, mkdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 const BOT_DIR = process.env.MAKEFUN_BOT_DIR ?? '/bot';
 const OUTPUT_DIR = process.env.MAKEFUN_OUTPUT_DIR ?? '/output';
 
-mkdirSync(OUTPUT_DIR, { recursive: true });
-try {
-  copyFileSync(join(BOT_DIR, 'VIDEO.json'), join(OUTPUT_DIR, 'VIDEO.json'));
-} catch (err) {
-  console.error(`VIDEO.json could not be copied from ${BOT_DIR}: ${(err as Error).message}`);
+function fail(message: string): never {
+  console.error(`gta6-clipper-01: ${message}`);
   process.exit(1);
 }
+
+const source = join(BOT_DIR, 'VIDEO.json');
+
+let parsed: { url?: unknown };
+try {
+  parsed = JSON.parse(readFileSync(source, 'utf8'));
+} catch (err) {
+  fail(`VIDEO.json at ${source} is not valid JSON: ${(err as Error).message}`);
+}
+
+if (typeof parsed.url !== 'string' || !/^https:\/\/(www\.)?youtube\.com\//.test(parsed.url)) {
+  fail(`VIDEO.json must hold a youtube.com url, got: ${JSON.stringify(parsed.url ?? null)}`);
+}
+
+mkdirSync(OUTPUT_DIR, { recursive: true });
+copyFileSync(source, join(OUTPUT_DIR, 'VIDEO.json'));
